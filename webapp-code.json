@@ -1,0 +1,94 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "AppServiceRegion": {
+      "type": "string",
+      "metadata": {
+        "description": "Location to deploy App Service / Plan to. Must be in the same region as the App Service Kubernetes Environment."
+      }
+    },
+    "AppName": {
+      "type": "string",
+      "defaultValue": "[concat('WebApp-', uniqueString(resourceGroup().id))]",
+      "metadata": {
+        "description": "Name of the Web App."
+      }
+    },
+    "linuxFxVersion": {
+      "type": "string",
+      "defaultValue": "DOTNETCORE|3.1",
+      "metadata": {
+        "description": "The Runtime stack of current web app"
+      }
+    },
+    "customLocationId": {
+      "type": "string"
+    },
+    "kubeEnvironmentId": {
+      "type": "string"
+    },
+    "plan": {
+      "type": "string",
+      "defaultValue": "[concat(parameters('AppName'), '-asp')]",
+      "metadata": {
+        "description": "Name of the Plan for the Web App."
+      }
+    },
+    "skuName": {
+      "type": "string",
+      "defaultValue": "K1",
+      "metadata": {
+        "description": "The Sku name/size of the Plan"
+      }
+    }
+  },
+  "resources": [
+    {
+      "type": "Microsoft.Web/serverfarms",
+      "apiVersion": "2020-12-01",
+      "name": "[parameters('plan')]",
+      "location": "[parameters('AppServiceRegion')]",
+      "sku": {
+        "tier": "ANY",
+        "name": "K1"
+      },
+      "kind": "linux,kubernetes",
+      "extendedLocation": {
+        "name": "[parameters('customLocationId')]",
+        "type": "customLocation"
+      },
+      "properties": {
+        "workerSizeId": 0,
+        "numberOfWorkers": 1,
+        "reserved": true,
+        "kubeEnvironmentProfile": {
+          "id": "[parameters('kubeEnvironmentId')]"
+        }
+      }
+    },
+    {
+      "type": "Microsoft.Web/sites",
+      "apiVersion": "2020-12-01",
+      "name": "[parameters('AppName')]",
+      "location": "[parameters('AppServiceRegion')]",
+      "extendedLocation": {
+        "name": "[parameters('customLocationId')]",
+        "type": "customLocation"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Web/serverfarms', parameters('plan'))]"
+      ],
+      "kind": "linux,kubernetes,app",
+      "properties": {
+        "serverFarmId": "[resourceId('Microsoft.Web/serverfarms', parameters('plan'))]",
+        "reserved": true,
+        "siteConfig": {
+          "linuxFxVersion": "[parameters('linuxFxVersion')]",
+          "appSettings": [
+          ]
+        }
+      }
+    }
+  ]
+}
